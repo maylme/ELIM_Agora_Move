@@ -13,6 +13,7 @@ Start by seting up your mongodb server.
 first install it : https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu
 
 Now go to the /Back/mongodb directory and launch the mongodb server: 
+
 <code>
   mongod --dbpath path/to/Back/mongodb
 </code>
@@ -28,7 +29,10 @@ https://nodejs.org/en/download/
 Go to nodejs/ directory and do the following commands:
 
 <code>
-nmp install
+nmp install <br>
+</code>
+
+<code>
 node server.js
 </code>
 
