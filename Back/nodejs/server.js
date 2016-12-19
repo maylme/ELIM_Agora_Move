@@ -20,7 +20,7 @@ var initial_datas=[
 app.use(bodyParser.json());
 
 var test = {
-	data: "Coucou mon coeur!!! ça marche:!!!! je t'aime"
+	data: "test ok"
 };
 
 var datas = [];
@@ -31,41 +31,53 @@ app.get('/test', function (req, res) {
 
 });
 
-app.get('/data/:from/:to', function (req, res){
-	var from = req.params.from;
-	var to = req.params.to;
-	console.log("Requesting data from:%s to:%s", from, to);
-
-	res.json({
-		from : from,
-		to : to
-	});
-	res.end();
-});
-
 app.get('/data', function (req, res){
+	var from = req.query.from;
+	var to = req.query.to;
 
+	console.log("Requesting data from:%s to:%s", from, to);
 	mongodb.MongoClient.connect(uri, function(error,db){
 		if (error){
 			console.log(error);
 			process.exit(1);
 		}
-
-		db.collection('data').find().toArray(function(error, docs){
+		
+		if (!to && !from){
 			if (error){
 				console.log(error);
 				process.exit(1);
 			}
-			res.send(docs);
-		});
+
+			db.collection('data').find().toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				res.send(docs);
+				res.end();
+			});
+		}else{
+			if (!to && from){
+				console.log(new Date(from));
+
+				db.collection('data').find({"time" : {"$gte": new Date(from)}}).toArray(function(error, docs){
+					if (error){
+						console.log(error);
+						process.exit(1);
+					}
+					console.log("result", docs);
+					res.end();
+				});
+			}
+		}
 	});
 });
 
 app.post('/data', function(req, res) {
 	console.log(req.body);
 
-	if(!req.body.hasOwnProperty('time') || 
-     !req.body.hasOwnProperty('position')) {
+	if(!req.body.hasOwnProperty('position')||
+		!req.body.hasOwnProperty('user_id')) {
 		res.statusCode = 400;
 		return res.send('Error 400: Post syntax incorrect.');
 	}
@@ -78,7 +90,8 @@ app.post('/data', function(req, res) {
 	}
  	
 	var data = {
-		time : req.body.time,
+		time : new Date(),
+		user_id: req.body.user_id,
 		position : {
 			latitude: req.body.position.latitude,
 			longitude: req.body.position.longitude
