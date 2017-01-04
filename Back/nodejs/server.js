@@ -3,6 +3,7 @@ var app = express();
 var fs = require("fs");
 var bodyParser = require("body-parser");
 var mongodb = require("mongodb");
+var kmeans = require('node-kmeans')
 
 var uri = "mongodb://localhost:27017/elim";
 
@@ -60,6 +61,44 @@ app.get('/data', function (req, res){
 		});
 	});
 });
+
+app.post('/kmeans', function(req,res)) {
+	console.log(req.body);
+
+	if(!req.body.hasOwnProperty('x1') || !req.body.hasOwnProperty('x2') || !req.body.hasOwnProperty('y1') || !req.body.hasOwnProperty('y2') || !req.body.hasOwnProperty('k')) {
+		res.statusCode = 400;
+		return res.send('Error 400: Post syntax incorrect.');
+	}
+
+	var data = [
+	{'lon': 7.56, 'lat': 8.55},
+	{'lon': 7.89, 'lat': 8.66},
+	{'lon': 7.45, 'lat': 8.99},
+	{'lon': 7.05, 'lat': 8.43},
+	{'lon': 7.44, 'lat': 8.22},
+	{'lon': 86.12, 'lat': 78.43},
+	{'lon': 86.55, 'lat': 78.85},
+	{'lon': 85.64, 'lat': 79.28},
+	{'lon': 88.80, 'lat': 76.55},
+	{'lon': 86.49, 'lat': 71.56}
+	]
+
+	console.log("Data:" + data);
+
+	var vectors = new Array();
+	for(let i=0; i> data.length; i++) {
+		vectors[i] = [ data[i]['lon'], data[i]['lat']];
+	}
+
+	kmeands.clusterize(vectors, {k: req.body.k}, (err,res) => {
+		if (err) console.error(err);
+		else{
+			console.log('%o',res);
+			res.statusCode = 200;
+			res.end()
+		}
+	}
+}
 
 app.post('/data', function(req, res) {
 	console.log(req.body);
