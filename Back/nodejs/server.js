@@ -56,19 +56,46 @@ app.get('/data', function (req, res){
 				res.send(docs);
 				res.end();
 			});
-		}else{
-			if (!to && from){
-				console.log(new Date(from));
+		}else if (!to && from){
+			console.log(new Date(from));
 
-				db.collection('data').find({"time" : {"$gte": new Date(from)}}).toArray(function(error, docs){
-					if (error){
-						console.log(error);
-						process.exit(1);
-					}
-					console.log("result", docs);
-					res.end();
-				});
-			}
+			db.collection('data').find({"time" : {"$gte": new Date(from)}}).toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				console.log("result", docs);
+				res.send(docs);
+				res.end();
+			});
+		}
+		else if (to && !from){
+			console.log(new Date(to));
+
+			db.collection('data').find({"time" : {"$lte": new Date(to)}}).toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				console.log("result", docs);
+				res.send(docs);
+				res.end();
+			});
+		}else if(to && from){
+			console.log(new Date(to));
+			console.log(new Date(from));
+
+			db.collection('data').find({"$and" : 
+				[{"time" : {"$lte": new Date(to)} }, 
+				{"time" : {"$gte": new Date(to)} }] }).toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				console.log("result", docs);
+				res.send(docs);
+				res.end();
+			});
 		}
 	});
 });
@@ -76,8 +103,7 @@ app.get('/data', function (req, res){
 app.post('/data', function(req, res) {
 	console.log(req.body);
 
-	if(!req.body.hasOwnProperty('position')||
-		!req.body.hasOwnProperty('user_id')) {
+	if(!req.body.hasOwnProperty('position')) {
 		res.statusCode = 400;
 		return res.send('Error 400: Post syntax incorrect.');
 	}
@@ -91,7 +117,6 @@ app.post('/data', function(req, res) {
  	
 	var data = {
 		time : new Date(),
-		user_id: req.body.user_id,
 		position : {
 			latitude: req.body.position.latitude,
 			longitude: req.body.position.longitude
