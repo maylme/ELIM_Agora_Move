@@ -10,13 +10,15 @@ var uri = "mongodb://localhost:27017/elim";
 var initial_datas=[
 	{
 		time:"2016-12-18T12:52:46+00:00",
-		position: {
-			latitude:"3",
-			longitude: "43"
-		}
+		position:  {
+	      "type" : "Point",
+	      "coordinates" : [ -73.778889, 40.639722 ]
+	    }
 	}
 ];
-
+/* 
+db.bar.createIndex({point:"2dsphere"});
+*/
 app.use(bodyParser.json());
 
 var test = {
@@ -34,15 +36,19 @@ app.get('/test', function (req, res) {
 app.get('/data', function (req, res){
 	var from = req.query.from;
 	var to = req.query.to;
+	var longitude = req.query.longitude;
+	var latitude = req.query.latitude;
+	var distance = req.query.distance; 
 
-	console.log("Requesting data from:%s to:%s", from, to);
+	console.log("Requesting data from:%s to:%s with sphere like c:[%s, %s] d:%s" , from, to, longitude, latitude, distance);
 	mongodb.MongoClient.connect(uri, function(error,db){
+
 		if (error){
 			console.log(error);
 			process.exit(1);
 		}
 		
-		if (!to && !from){
+		if (!to && !from && !longitude && !latitude && !distance){
 			if (error){
 				console.log(error);
 				process.exit(1);
@@ -56,6 +62,83 @@ app.get('/data', function (req, res){
 				res.send(docs);
 				res.end();
 			});
+		}else if (!to && from && longitude && latitude && distance){
+
+			console.log("yolo");
+			db.collection('data').find(
+				{"position" : 
+					{ "$near" :
+                        { "$geometry" :
+                            { "type" : "Point" ,
+                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            } ,
+                            "$maxDistance" : Number(distance) /* in meters */
+                        }     
+                    }  
+                 }).toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				var i = 0;
+				res.send(docs);
+				res.end();
+			});
+		}
+		else if (to && !from && longitude && latitude && distance){
+
+			console.log(new Date(to));
+
+			db.collection('data').find({"$and" : 
+				[ 
+				{"time" : {"$lte": new Date(to)} },
+				{"position" : 
+					{ "$near" :
+                        { "$geometry" :
+                            { "type" : "Point" ,
+                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            } ,
+                            "$maxDistance" : Number(distance) /* in meters */
+                        }     
+                    }  
+                }
+				] }).toArray(function(error, docs){
+				if (error){
+					console.error(error);
+					process.exit(1);
+				}
+				res.send(docs);
+				res.end();
+			});
+		}
+		else if (to && from && longitude && latitude && distance){
+
+			console.log(new Date(to));
+			console.log(new Date(from));
+
+			db.collection('data').find({"$and" : 
+				[ 
+				{"time" : {"$lte": new Date(to)} },
+				{"time" : {"$gte": new Date(from)} },
+				{"position" : 
+					{ "$near" :
+                        { "$geometry" :
+                            { "type" : "Point" ,
+                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            } ,
+                            "$maxDistance" : Number(distance)	 /* in meters */
+                        }     
+                    }  
+                }
+				] }).toArray(function(error, docs){
+				if (error){
+					console.log(error);
+					process.exit(1);
+				}
+				var i = 0;
+				res.send(docs);
+				res.end();
+			});
 		}else if (!to && from){
 			console.log(new Date(from));
 
@@ -64,7 +147,6 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				console.log("result", docs);
 				res.send(docs);
 				res.end();
 			});
@@ -77,7 +159,6 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				console.log("result", docs);
 				res.send(docs);
 				res.end();
 			});
@@ -87,12 +168,12 @@ app.get('/data', function (req, res){
 
 			db.collection('data').find({"$and" : 
 				[{"time" : {"$lte": new Date(to)} }, 
-				{"time" : {"$gte": new Date(to)} }] }).toArray(function(error, docs){
+				{"time" : {"$gte": new Date(from)} }] }).toArray(function(error, docs){
 				if (error){
 					console.log(error);
 					process.exit(1);
 				}
-				console.log("result", docs);
+				
 				res.send(docs);
 				res.end();
 			});
@@ -118,9 +199,9 @@ app.post('/data', function(req, res) {
 	var data = {
 		time : new Date(),
 		position : {
-			latitude: req.body.position.latitude,
-			longitude: req.body.position.longitude
-		}
+	      "type" : "Point",
+	      "coordinates" : [ Number(req.body.position.longitude), Number(req.body.position.latitude) ]
+	    }
 	}; 
 
 	mongodb.MongoClient.connect(uri, function(error,db){
@@ -128,6 +209,8 @@ app.post('/data', function(req, res) {
 			console.log(error);
 			process.exit(1);
 		}
+		//db.collection('data').createIndex({position:"2dsphere"});
+
 		db.collection("data").insert(data, function (error, result){
 			if (error){
 				console.log(error);
