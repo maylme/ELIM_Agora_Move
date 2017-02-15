@@ -3,7 +3,8 @@ var app = express();
 var fs = require("fs");
 var bodyParser = require("body-parser");
 var mongodb = require("mongodb");
-var kmeans = require('node-kmeans')
+var kmeans = require('node-kmeans');
+var gs = require("gap-stat");
 
 var uri = "mongodb://localhost:27017/elim";
 
@@ -101,43 +102,73 @@ app.get('/data', function (req, res){
 	});
 });
 
-app.post('/kmeans', function(req,res)) {
+app.get('/kmeans', function(req,res) {
 	console.log(req.body);
 
-	if(!req.body.hasOwnProperty('x1') || !req.body.hasOwnProperty('x2') || !req.body.hasOwnProperty('y1') || !req.body.hasOwnProperty('y2') || !req.body.hasOwnProperty('k')) {
-		res.statusCode = 400;
-		return res.send('Error 400: Post syntax incorrect.');
+	var x1 = req.query.x1;
+	var x2 = req.query.x2;
+	var y1 = req.query.y1;
+	var y2 = req.query.y2;
+	var time = req.query.time;
+
+	if (!(x1&&x2&&y1&&y2&&time)){
+	 	res.statusCode = 400;
+	 	return res.send('Error 400: GET syntax incorrect : param missing.');
 	}
 
 	var data = [
-	{'lon': 7.56, 'lat': 8.55},
-	{'lon': 7.89, 'lat': 8.66},
-	{'lon': 7.45, 'lat': 8.99},
-	{'lon': 7.05, 'lat': 8.43},
-	{'lon': 7.44, 'lat': 8.22},
-	{'lon': 86.12, 'lat': 78.43},
-	{'lon': 86.55, 'lat': 78.85},
-	{'lon': 85.64, 'lat': 79.28},
-	{'lon': 88.80, 'lat': 76.55},
-	{'lon': 86.49, 'lat': 71.56}
+		{'lon': 7.56, 'lat': 8.55},
+		{'lon': 7.89, 'lat': 8.66},
+		{'lon': 7.45, 'lat': 8.99},
+		{'lon': 7.05, 'lat': 8.43},
+		{'lon': 7.44, 'lat': 8.22},
+		{'lon': 86.12, 'lat': 78.43},
+		{'lon': 86.55, 'lat': 78.85},
+		{'lon': 85.64, 'lat': 79.28},
+		{'lon': 88.80, 'lat': 76.55},
+		{'lon': 86.49, 'lat': 71.56},
+		{'lon': 100.49, 'lat': 152.54},
+		{'lon': 101.49, 'lat': 152.56},
+		{'lon': 100.58, 'lat': 152.56},
+		{'lon': 99.76, 'lat': 153.56},
 	]
 
-	console.log("Data:" + data);
-
 	var vectors = new Array();
-	for(let i=0; i> data.length; i++) {
+	for(var i=0; i< data.length; i++) {
 		vectors[i] = [ data[i]['lon'], data[i]['lat']];
 	}
 
-	kmeands.clusterize(vectors, {k: req.body.k}, (err,res) => {
-		if (err) console.error(err);
-		else{
-			console.log('%o',res);
-			res.statusCode = 200;
-			res.end()
+	var goodk = gs.gap_statistic(vectors, 1, 10);
+
+	var rep = 1;
+	for(var i=1; i<goodk.gaps.length; i++) {
+		if(goodk.gaps[i]<0.5)
+			continue
+		else {
+			rep = i+1;
+			break;
 		}
 	}
-}
+	/*console.log('best cluster size is '+goodk.cluster_size);
+	console.log('My best is '+ rep);
+	console.log('Gap '+goodk.gaps);
+	console.log('gap_stddevs '+goodk.gap_stddevs);*/
+
+	kmeans.clusterize(vectors, {k: rep}, (err,result) => {
+		if (err){
+			console.error(err);
+			res.end(err);
+			return;
+		}
+		else{
+			console.log('%o',result);
+			res.statusCode = 200;
+			res.send(result);
+			res.end();
+			return;
+		}
+	});
+});
 
 app.post('/data', function(req, res) {
 	console.log(req.body);
@@ -172,7 +203,7 @@ app.post('/data', function(req, res) {
 				console.log(error);
 				process.exit(1);
 			}
-			console.log("data is in base I gess... ");
+			console.log("data is in base I guess... ");
 		  	res.json(data);
 		  	res.end();
 		});
