@@ -190,9 +190,9 @@ app.get('/kmeans', function(req,res) {
 	var x2 = req.query.x2;
 	var y1 = req.query.y1;
 	var y2 = req.query.y2;
-	var time = req.query.time;
-
-	if (!(x1&&x2&&y1&&y2&&time)){
+	var time1 = req.query.time1;
+	var time2 = req.query.time2;
+	if (!(x1&&x2&&y1&&y2&&time1&&time2)){
 	 	res.statusCode = 400;
 	 	return res.send('Error 400: GET syntax incorrect : param missing.');
 	}
