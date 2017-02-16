@@ -38,11 +38,12 @@ app.get('/test', function (req, res) {
 app.get('/data', function (req, res){
 	var from = req.query.from;
 	var to = req.query.to;
-	var longitude = req.query.longitude;
-	var latitude = req.query.latitude;
-	var distance = req.query.distance; 
+	var lng1 = req.query.lng1;
+	var lng2 = req.query.lng2;
+	var lat1 = req.query.lat1; 
+	var lat2 = req.query.lat2; 
 
-	console.log("Requesting data from:%s to:%s with sphere like c:[%s, %s] d:%s" , from, to, longitude, latitude, distance);
+	console.log("Requesting data from:%s to:%s with sphere like c:[%s, %s]" , from, to, lng1, lat1);
 	mongodb.MongoClient.connect(uri, function(error,db){
 
 		if (error){
@@ -50,12 +51,7 @@ app.get('/data', function (req, res){
 			process.exit(1);
 		}
 		
-		if (!to && !from && !longitude && !latitude && !distance){
-			if (error){
-				console.log(error);
-				process.exit(1);
-			}
-
+		if (!to && !from && !lng1 && !lat1 && !lng2 && !lat2){
 			db.collection('data').find().toArray(function(error, docs){
 				if (error){
 					console.log(error);
@@ -64,19 +60,24 @@ app.get('/data', function (req, res){
 				res.send(docs);
 				res.end();
 			});
-		}else if (!to && from && longitude && latitude && distance){
+		}else if (!to && from && lng1 && lat1 && lng2 && lat2){
 
 			console.log("yolo");
 			db.collection('data').find(
 				{"position" : 
-					{ "$near" :
+					{ "$geoWithin" :
                         { "$geometry" :
-                            { "type" : "Point" ,
-                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            { "type": "Polygon",
+                              "coordinates" : [[
+                              	[ Number(lat1) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng1) ]
+                              ]],
                             } ,
-                            "$maxDistance" : Number(distance) /* in meters */
                         }     
-                    }  
+                    }
                  }).toArray(function(error, docs){
 				if (error){
 					console.log(error);
@@ -87,7 +88,7 @@ app.get('/data', function (req, res){
 				res.end();
 			});
 		}
-		else if (to && !from && longitude && latitude && distance){
+		else if (to && !from && lng1 && lat1 && lng2 && lat2){
 
 			console.log(new Date(to));
 
@@ -95,14 +96,19 @@ app.get('/data', function (req, res){
 				[ 
 				{"time" : {"$lte": new Date(to)} },
 				{"position" : 
-					{ "$near" :
+					{ "$geoWithin" :
                         { "$geometry" :
-                            { "type" : "Point" ,
-                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            { "type": "Polygon",
+                              "coordinates" : [[
+                              	[ Number(lat1) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng1) ]
+                              ]],
                             } ,
-                            "$maxDistance" : Number(distance) /* in meters */
                         }     
-                    }  
+                    }
                 }
 				] }).toArray(function(error, docs){
 				if (error){
@@ -113,7 +119,7 @@ app.get('/data', function (req, res){
 				res.end();
 			});
 		}
-		else if (to && from && longitude && latitude && distance){
+		else if (to && from && lng1 && lat1 && lng2 && lat2){
 
 			console.log(new Date(to));
 			console.log(new Date(from));
@@ -123,12 +129,17 @@ app.get('/data', function (req, res){
 				{"time" : {"$lte": new Date(to)} },
 				{"time" : {"$gte": new Date(from)} },
 				{"position" : 
-					{ "$near" :
+					{ "$geoWithin" :
                         { "$geometry" :
-                            { "type" : "Point" ,
-                              "coordinates" : [ Number(longitude) , Number(latitude) ]
+                            { "type": "Polygon",
+                              "coordinates" : [[
+                              	[ Number(lat1) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng1) ],
+                              	[ Number(lat2) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng2) ],
+                              	[ Number(lat1) , Number(lng1) ]
+                              ]],
                             } ,
-                            "$maxDistance" : Number(distance)	 /* in meters */
                         }     
                     }  
                 }
@@ -179,25 +190,14 @@ app.get('/data', function (req, res){
 				res.send(docs);
 				res.end();
 			});
+		}else{
+			res.send({message: "error, argument left"});
+			res.end();
 		}
 	});
 });
-
-app.get('/kmeans', function(req,res) {
-	console.log(req.body);
-
-	var x1 = req.query.x1;
-	var x2 = req.query.x2;
-	var y1 = req.query.y1;
-	var y2 = req.query.y2;
-	var time1 = req.query.time1;
-	var time2 = req.query.time2;
-	if (!(x1&&x2&&y1&&y2&&time1&&time2)){
-	 	res.statusCode = 400;
-	 	return res.send('Error 400: GET syntax incorrect : param missing.');
-	}
-
-	var data = [
+/*
+var data = [
 		{'lon': 7.56, 'lat': 8.55},
 		{'lon': 7.89, 'lat': 8.66},
 		{'lon': 7.45, 'lat': 8.99},
@@ -214,6 +214,10 @@ app.get('/kmeans', function(req,res) {
 		{'lon': 99.76, 'lat': 153.56},
 	]
 
+ */
+function kmeans_func (data){
+
+	
 	var vectors = new Array();
 	for(var i=0; i< data.length; i++) {
 		vectors[i] = [ data[i]['lon'], data[i]['lat']];
@@ -249,7 +253,7 @@ app.get('/kmeans', function(req,res) {
 			return;
 		}
 	});
-});
+}
 
 app.post('/data', function(req, res) {
 	console.log(req.body);
