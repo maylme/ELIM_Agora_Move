@@ -43,7 +43,7 @@ app.get('/data', function (req, res){
 	var lat1 = req.query.lat1; 
 	var lat2 = req.query.lat2; 
 
-	console.log("Requesting data from:%s to:%s with sphere like c:[%s, %s]" , from, to, lng1, lat1);
+	console.log("Requesting data from:%s to:%s with polygon like c:[%s, %s]" , from, to, lng1, lat1);
 	mongodb.MongoClient.connect(uri, function(error,db){
 
 		if (error){
@@ -149,6 +149,7 @@ app.get('/data', function (req, res){
 					process.exit(1);
 				}
 				var i = 0;
+				console.log(docs);
 				res.send(docs);
 				res.end();
 			});
@@ -186,8 +187,24 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				
-				res.send(docs);
+				var data = [];
+				for(var counter =0; counter<docs.length;counter++) {
+					data[counter] = docs[counter].position;
+				}
+				console.log(data);
+				var result;
+				kmeans_func(data,result);
+				console.log("RESULT"+result);
+				var toSend = {};
+				toSend.data = data;
+				console.log(toSend);
+				var indice = [];
+				//for(var counter =0; counter<result.length;counter++) {
+				//	indice[counter] = result[counter].clusterInd;
+				//}
+				console.log(indice);
+				toSend.cluster = indice;
+				res.send(toSend);
 				res.end();
 			});
 		}else{
@@ -196,31 +213,13 @@ app.get('/data', function (req, res){
 		}
 	});
 });
-/*
-var data = [
-		{'lon': 7.56, 'lat': 8.55},
-		{'lon': 7.89, 'lat': 8.66},
-		{'lon': 7.45, 'lat': 8.99},
-		{'lon': 7.05, 'lat': 8.43},
-		{'lon': 7.44, 'lat': 8.22},
-		{'lon': 86.12, 'lat': 78.43},
-		{'lon': 86.55, 'lat': 78.85},
-		{'lon': 85.64, 'lat': 79.28},
-		{'lon': 88.80, 'lat': 76.55},
-		{'lon': 86.49, 'lat': 71.56},
-		{'lon': 100.49, 'lat': 152.54},
-		{'lon': 101.49, 'lat': 152.56},
-		{'lon': 100.58, 'lat': 152.56},
-		{'lon': 99.76, 'lat': 153.56},
-	]
 
- */
-function kmeans_func (data){
+function kmeans_func (data,res){
 
 	
 	var vectors = new Array();
 	for(var i=0; i< data.length; i++) {
-		vectors[i] = [ data[i]['lon'], data[i]['lat']];
+		vectors[i] = [ data[i]['longitude'], data[i]['latitude']];
 	}
 
 	var goodk = gs.gap_statistic(vectors, 1, 10);
@@ -242,15 +241,16 @@ function kmeans_func (data){
 	kmeans.clusterize(vectors, {k: rep}, (err,result) => {
 		if (err){
 			console.error(err);
-			res.end(err);
+			//res.end(err);
 			return;
 		}
 		else{
-			console.log('%o',result);
-			res.statusCode = 200;
-			res.send(result);
-			res.end();
-			return;
+			//console.log('%o',result);
+			//res.statusCode = 200;
+			res = result;
+			//res.send(result);
+			//res.end();
+			
 		}
 	});
 }
