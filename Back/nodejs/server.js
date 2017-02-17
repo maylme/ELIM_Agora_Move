@@ -5,9 +5,10 @@ var bodyParser = require("body-parser");
 var mongodb = require("mongodb");
 var kmeans = require('node-kmeans');
 var gs = require("gap-stat");
-
 var uri = "mongodb://localhost:27017/elim";
-
+const turfConcave= require('@turf/concave');
+const turfConvex = require('@turf/convex');
+const turfHelper = require("@turf/helpers");
 
 var initial_datas=[
 	{
@@ -83,9 +84,10 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				var i = 0;
-				res.send(docs);
-				res.end();
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
 			});
 		}
 		else if (to && !from && lng1 && lat1 && lng2 && lat2){
@@ -115,14 +117,21 @@ app.get('/data', function (req, res){
 					console.error(error);
 					process.exit(1);
 				}
-				res.send(docs);
-				res.end();
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
 			});
 		}
 		else if (to && from && lng1 && lat1 && lng2 && lat2){
 
-			console.log(new Date(to));
-			console.log(new Date(from));
+			console.log("to", new Date(to));
+			console.log("from", new Date(from));
+			console.log("lat1", Number(lat1));
+			console.log("lat2", Number(lat2));
+			console.log("lng1", Number(lng1));
+			console.log("lng2", Number(lng2));
+
 
 			db.collection('data').find({"$and" : 
 				[ 
@@ -148,10 +157,11 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				var i = 0;
-				console.log(docs);
-				res.send(docs);
-				res.end();
+				console.log("docs:",docs);
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
 			});
 		}else if (!to && from){
 			console.log(new Date(from));
@@ -161,8 +171,10 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				res.send(docs);
-				res.end();
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
 			});
 		}
 		else if (to && !from){
@@ -173,12 +185,13 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				res.send(docs);
-				res.end();
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
 			});
 		}else if(to && from){
-			console.log(new Date(to));
-			console.log(new Date(from));
+			console.log("from_to");
 
 			db.collection('data').find({"$and" : 
 				[{"time" : {"$lte": new Date(to)} }, 
@@ -187,25 +200,11 @@ app.get('/data', function (req, res){
 					console.log(error);
 					process.exit(1);
 				}
-				var data = [];
-				for(var counter =0; counter<docs.length;counter++) {
-					data[counter] = docs[counter].position;
-				}
-				console.log(data);
-				var result;
-				kmeans_func(data,result);
-				console.log("RESULT"+result);
-				var toSend = {};
-				toSend.data = data;
-				console.log(toSend);
-				var indice = [];
-				//for(var counter =0; counter<result.length;counter++) {
-				//	indice[counter] = result[counter].clusterInd;
-				//}
-				console.log(indice);
-				toSend.cluster = indice;
-				res.send(toSend);
-				res.end();
+				do_kmeans(docs,function(result){
+					res.send(result);
+					res.end();
+				});
+				
 			});
 		}else{
 			res.send({message: "error, argument left"});
@@ -213,13 +212,68 @@ app.get('/data', function (req, res){
 		}
 	});
 });
+function do_kmeans(docs, cb){
+	var data = [];
+	if (docs && docs.length > 0){
+		for(var counter =0; counter<docs.length;counter++) {
+			data.push(docs[counter].position.coordinates);
+		}
+		kmeans_func(data, function(result){
+			console.log("kmeans result ",result);
+			var grpCluster = [];
+		
+			for(var counter = 0; counter<result.length;counter++) {
+				grpCluster.push(result[counter].cluster);
+			}
+			console.log("grp cluster", grpCluster);
+			var clusters=[];
+			for (var index in grpCluster){
+				var cluster = grpCluster[index];
+				var features=[];
+				console.log("un cluster : ", cluster);
+				if (cluster.length < 3){
+					/* ignore it */
+					console.log("trop petit");
+				}else{
+					/*convert point to feature*/
+					for (var i in cluster ){
+						var geometry = {
+						     "type": "Point",
+						     "coordinates": cluster[i]
+						   };
+						features.push(turfHelper.feature(geometry));
+					}
+					var fc = turfHelper.featureCollection(features);
+					var poly={};
+					try{
+						poly = turfConcave(fc, 1);
+					}catch(e){
+						//console.log(e);
+						poly = turfConvex(fc);
+					}
+					console.log("poly",poly);
+					if(poly){
+						clusters.push({
+							size: cluster.length,
+							polygon : poly.geometry.coordinates
+						});
+					}
+					
+				}
+			}
+			cb(clusters);
 
-function kmeans_func (data,res){
+		});
+	}else{
+		cb([]);
+	}
+}
+function kmeans_func (data, cb){
 
-	
-	var vectors = new Array();
+	let vectors = new Array();
+
 	for(var i=0; i< data.length; i++) {
-		vectors[i] = [ data[i]['longitude'], data[i]['latitude']];
+		vectors[i] = data[i];
 	}
 
 	var goodk = gs.gap_statistic(vectors, 1, 10);
@@ -233,12 +287,8 @@ function kmeans_func (data,res){
 			break;
 		}
 	}
-	/*console.log('best cluster size is '+goodk.cluster_size);
-	console.log('My best is '+ rep);
-	console.log('Gap '+goodk.gaps);
-	console.log('gap_stddevs '+goodk.gap_stddevs);*/
 
-	kmeans.clusterize(vectors, {k: rep}, (err,result) => {
+	kmeans.clusterize(vectors, {k: 4}, (err,result) => {
 		if (err){
 			console.error(err);
 			//res.end(err);
@@ -247,7 +297,8 @@ function kmeans_func (data,res){
 		else{
 			//console.log('%o',result);
 			//res.statusCode = 200;
-			res = result;
+			cb(result);
+			//res= result;
 			//res.send(result);
 			//res.end();
 			
@@ -274,7 +325,7 @@ app.post('/data', function(req, res) {
 		time : new Date(),
 		position : {
 	      "type" : "Point",
-	      "coordinates" : [ Number(req.body.position.longitude), Number(req.body.position.latitude) ]
+	      "coordinates" : [ Number(req.body.position.latitude), Number(req.body.position.longitude) ]
 	    }
 	}; 
 
@@ -296,6 +347,50 @@ app.post('/data', function(req, res) {
 		});
 	});
 });
+app.post('/cheating', function(req, res) {
+    console.log(req.body);
+
+    if(!req.body.hasOwnProperty('position')) {
+            res.statusCode = 400;
+            return res.send('Error 400: Post syntax incorrect.');
+    }
+    else{   
+            if ((!req.body.position.hasOwnProperty("longitude")) ||
+                    (!req.body.position.hasOwnProperty("latitude")) || !req.body.hasOwnProperty("date")) {
+                    res.statusCode = 400;
+                    return res.send('Error 400: Post syntax incorrect (position).');
+            }
+    }
+
+    var data = {
+            time : new Date(req.body.date),
+            position : {
+          "type" : "Point",
+          "coordinates" : [ Number(req.body.position.latitude), Number(req.body.position.longitude) ]
+        }
+    };
+
+    mongodb.MongoClient.connect(uri, function(error,db){
+        if (error){
+                console.log(error);
+                process.exit(1);
+        }
+        //db.collection('data').createIndex({position:"2dsphere"});
+
+        db.collection("data").insert(data, function (error, result){
+                if (error){
+                        console.log(error);
+                        process.exit(1);
+                }
+                console.log("data is in base I guess... ");
+                res.json(data);
+                res.end();
+        });
+    });
+});
+
+
+
 
 var server = app.listen(8081, function () {
 

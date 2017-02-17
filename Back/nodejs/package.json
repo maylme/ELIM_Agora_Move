@@ -4,13 +4,14 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
+    "@turf/turf": "^3.10.2",
     "body-parser": "^1.15.2",
+    "clusterfck": "^0.6.0",
     "express": "^4.14.0",
+    "gap-stat": "^0.0.4",
     "mongodb": "^2.2.16",
     "node-kmeans": "^1.1.0",
-    "gap-stat": "^0.0.4",
-    "clusterfck": "^0.6.0"
-
+    "polygon": "^1.0.2"
   },
   "devDependencies": {},
   "scripts": {
