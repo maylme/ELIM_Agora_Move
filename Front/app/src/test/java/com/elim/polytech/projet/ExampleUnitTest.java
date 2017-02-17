@@ -1,4 +1,4 @@
-package com.example.rhoo.pas;
+package com.elim.polytech.projet;
 
 import org.junit.Test;
 

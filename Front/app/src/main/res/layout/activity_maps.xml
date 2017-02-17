@@ -1,0 +1,113 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+tools:context="com.elim.polytech.projet.MapsActivity" >
+
+<fragment xmlns:map="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/map"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:scrollbars="vertical"
+    class="com.google.android.gms.maps.SupportMapFragment"/>
+
+    <android.support.design.widget.FloatingActionButton
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:clickable="true"
+        app:srcCompat="@drawable/cast_ic_notification_forward"
+        android:id="@+id/fab"
+        app:fabSize="normal"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginRight="58dp"
+        android:layout_marginEnd="58dp"
+        android:layout_marginBottom="70dp" />
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true">
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="35dp">
+
+            <TextView
+                android:text="from:"
+                android:layout_width="69dp"
+                android:layout_height="wrap_content"
+                android:id="@+id/label_from"
+                android:textAppearance="@style/TextAppearance.AppCompat"
+                android:textStyle="normal|bold"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="date"
+                android:ems="10"
+                android:id="@+id/from_date"
+                android:layout_weight="1"
+                android:contentDescription="AAAA-MM-JJ"
+                android:textSize="14sp" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="date"
+                android:ems="10"
+                android:id="@+id/from_time"
+                android:layout_weight="1"
+                android:contentDescription="HH-mm"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="30dp">
+
+            <TextView
+                android:text="to: "
+                android:layout_width="68dp"
+                android:layout_height="wrap_content"
+                android:id="@+id/label_to"
+                android:textAppearance="@style/TextAppearance.AppCompat"
+                android:textStyle="normal|bold"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="date"
+                android:ems="10"
+                android:id="@+id/to_date"
+                android:layout_weight="0.81"
+                android:contentDescription="AAAA-MM-JJ"
+                android:textSize="14sp" />
+
+            <EditText
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:inputType="date"
+                android:ems="10"
+                android:id="@+id/to_time"
+                android:layout_weight="1"
+                android:contentDescription="HH-mm"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>
